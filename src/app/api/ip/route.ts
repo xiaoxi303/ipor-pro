@@ -24,10 +24,14 @@ export async function GET(request: NextRequest) {
     // Always pass the IP explicitly - never rely on the server's own IP detection
     // This avoids looking up Cloudflare infrastructure IPs
     const apiKey = process.env.IP2LOCATION_API_KEY;
-    const url = isLocal 
-      ? `https://api.ip2location.io/${apiKey ? `?key=${apiKey}` : ''}`
-      : `https://api.ip2location.io/?ip=${ipToLookup}${apiKey ? `&key=${apiKey}` : ''}`;
 
+    if (!apiKey) {
+      throw new Error('IP2LOCATION_API_KEY not configured, skipping to fallback');
+    }
+
+    const url = isLocal
+      ? `https://api.ip2location.io/?key=${apiKey}`
+      : `https://api.ip2location.io/?ip=${ipToLookup}&key=${apiKey}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
