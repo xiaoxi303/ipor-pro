@@ -26,11 +26,11 @@ export default function InfoCard({ title, icon: Icon, children, className }: Inf
 
 export function InfoItem({ label, value, subValue, highlight }: { label: string; value: string | number; subValue?: string; highlight?: boolean }) {
   return (
-    <div className="flex justify-between items-start border-b border-white/5 pb-2 last:border-0 last:pb-0">
-      <span className="text-muted-foreground text-sm">{label}</span>
-      <div className="text-right">
-        <p className={cn("font-medium", highlight ? "text-primary" : "text-foreground")}>{value}</p>
-        {subValue && <p className="text-xs text-muted-foreground">{subValue}</p>}
+    <div className="flex justify-between items-start border-b border-white/5 pb-2 last:border-0 last:pb-0 gap-4">
+      <span className="text-muted-foreground text-sm shrink-0">{label}</span>
+      <div className="text-right min-w-0 flex-1">
+        <p className={cn("font-medium break-words", highlight ? "text-primary" : "text-foreground")}>{value}</p>
+        {subValue && <p className="text-xs text-muted-foreground break-words mt-0.5">{subValue}</p>}
       </div>
     </div>
   );

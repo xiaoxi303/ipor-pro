@@ -57,12 +57,12 @@ export default function Hero({ ip, riskScore, city, country, isLoading, onSearch
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             disabled={isLoading}
-            className="w-full h-14 md:h-16 px-6 rounded-2xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-xl font-medium transition-all group-hover:bg-white/10 disabled:opacity-50"
+            className="w-full h-14 md:h-16 pl-6 pr-28 md:pr-36 rounded-2xl bg-white/5 border border-white/10 focus:border-primary/50 focus:outline-none text-base md:text-xl font-medium transition-all group-hover:bg-white/10 disabled:opacity-50"
           />
           <button 
             type="submit"
             disabled={isLoading || !searchInput.trim()}
-            className="absolute right-2 top-2 bottom-2 px-6 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:bg-primary/50 disabled:shadow-none flex items-center gap-2"
+            className="absolute right-2 top-2 bottom-2 px-4 md:px-6 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:bg-primary/50 disabled:shadow-none flex items-center gap-2 text-sm md:text-base"
           >
             {isLoading ? (
               <motion.div
@@ -87,11 +87,11 @@ export default function Hero({ ip, riskScore, city, country, isLoading, onSearch
           </button>
         </div>
 
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 flex items-center justify-center gap-4">
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight mb-4 flex flex-col sm:flex-row items-center justify-center gap-4 break-all px-4">
           {ip}
           <button 
             onClick={copyToClipboard}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors shrink-0"
             title="复制 IP"
           >
             {copied ? <Check className="h-5 w-5 text-green-500" /> : <Copy className="h-5 w-5 text-muted-foreground" />}
