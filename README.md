@@ -7,7 +7,7 @@
 [![Next.js](https://img.shields.io/badge/Framework-Next.js%2015-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20v4-38b2ac?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPL_v3.0-blue.svg?style=for-the-badge)](LICENSE)
 
 [✨ 立即体验](http://localhost:3000) · [🛠️ 核心功能](#-核心功能) · [🚀 快速开始](#-快速开始)
 
@@ -140,7 +140,7 @@ npm run dev
 
 ## 📄 开源协议 (License)
 
-本项目基于 **Apache License 2.0** 协议开源。详细信息请参阅 [LICENSE](LICENSE) 文件。
+本项目基于 **GNU General Public License v3.0 (GPLv3)** 协议开源。详细信息请参阅 [LICENSE](LICENSE) 文件。
 
 ---
 
