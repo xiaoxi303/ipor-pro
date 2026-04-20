@@ -4,8 +4,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const queryIp = searchParams.get('ip');
 
+  // Priority order: Cloudflare's real IP header > x-real-ip > x-forwarded-for (first entry)
+  // cf-connecting-ip is the ONLY reliable source on Cloudflare Workers
+  const cfIp = request.headers.get('cf-connecting-ip');
+  const realIp = request.headers.get('x-real-ip');
   const forwarded = request.headers.get('x-forwarded-for');
-  let clientIp = forwarded ? forwarded.split(',')[0] : '';
+  
+  let clientIp = cfIp || realIp || (forwarded ? forwarded.split(',')[0].trim() : '');
 
   let ipToLookup = queryIp || clientIp;
   
@@ -14,12 +19,15 @@ export async function GET(request: NextRequest) {
                   ipToLookup === '127.0.0.1' || 
                   ipToLookup.includes('::ffff:127.0.0.1');
 
+
   try {
-    // Primary: IP2Location.io (Using their free public endpoint if possible, or simulating the format)
-    // Note: IP2Location is highly regarded for its database integrity.
+    // Always pass the IP explicitly - never rely on the server's own IP detection
+    // This avoids looking up Cloudflare infrastructure IPs
+    const apiKey = process.env.IP2LOCATION_API_KEY;
     const url = isLocal 
-      ? `https://api.ip2location.io/` 
-      : `https://api.ip2location.io/?ip=${ipToLookup}`;
+      ? `https://api.ip2location.io/${apiKey ? `?key=${apiKey}` : ''}`
+      : `https://api.ip2location.io/?ip=${ipToLookup}${apiKey ? `&key=${apiKey}` : ''}`;
+
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
