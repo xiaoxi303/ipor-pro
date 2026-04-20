@@ -7,7 +7,7 @@
 [![Next.js](https://img.shields.io/badge/Framework-Next.js%2015-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20v4-38b2ac?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge)](LICENSE)
 
 [✨ 立即体验](http://localhost:3000) · [🛠️ 核心功能](#-核心功能) · [🚀 快速开始](#-快速开始)
 
@@ -63,6 +63,7 @@ IPor 采用了最前沿的 **Glassmorphism (毛玻璃)** 设计语言：
 -   **样式方案**: Tailwind CSS v4 + Vanilla CSS
 -   **地图驱动**: Leaflet.js
 -   **数据源**: IP2Location.io / IP-API / Custom Heuristics
+-   **部署架构**: OpenNext + Cloudflare Pages / Workers
 
 ---
 
@@ -94,6 +95,39 @@ npm run dev
 
 ---
 
+## ☁️ Cloudflare 部署指南 (OpenNext 架构)
+
+本项目采用 **OpenNext** 架构，旨在将 Next.js 15 的全栈特性（如 SSR 和 API 路由）完美运行在 Cloudflare 的边缘网络上。
+
+> [!WARNING]
+> **部署架构避坑指南**：
+> 很多人误以为本项目是部署在 Cloudflare Pages 上的静态网站。实际上，由于使用了 OpenNext，当你在 Cloudflare Pages 触发构建时，它会在后台**打包并部署一个独立的 Cloudflare Worker**（例如 `ipor-pro`）来运行你的 API 和服务端渲染代码。
+
+### 部署步骤：
+
+1. **连接 GitHub**：在 Cloudflare Dashboard 中选择 **Workers 和 Pages** -> **创建应用程序** -> **Pages** -> **连接到 Git**。
+2. **选择仓库**：选择你 Fork 或 Push 的 `ipor-pro` 仓库。
+3. **构建设置**：
+   - 框架预设：选择 `None` 
+   - 构建命令：`npm run deploy` （此命令内部会自动执行 OpenNext 的打包和 Wrangler 部署）
+   - 输出目录：无需关心，OpenNext 会自动接管。
+4. **配置环境变量（关键！）**：
+   在首次构建前，在 Pages 的环境变量设置中添加你的 API Key：
+   - 变量名：`IP2LOCATION_API_KEY`
+   - 值：`你的_API_KEY`
+5. **点击部署**。
+
+> [!IMPORTANT]
+> **关于环境变量被清空的终极解决方案**：
+> 按照常规逻辑，如果你手动在部署好的 Worker 中添加了环境变量，下次通过 Pages 触发 CI 自动构建时，旧的环境变量**会被 Wrangler 清空覆盖**。
+> 
+> 为了解决这个问题，本项目已经在 `package.json` 的打包命令中强制启用了 `--keep-vars`：
+> `"deploy": "opennextjs-cloudflare build && npx wrangler deploy --keep-vars"`
+> 
+> **你只需做一次操作**：在首次部署成功后，进入 Cloudflare 面板的 **Workers 和 Pages**，找到由代码自动生成的那个 **Worker**（注意是 Worker，不是 Pages 项目），在它的 **设置 -> 变量和机密** 中，把 `IP2LOCATION_API_KEY` 填上去并保存。从此以后，无论你怎么自动更新代码，环境变量都永远不会掉线！
+
+---
+
 ## 🤝 贡献与反馈
 
 如果您有任何想法、建议或发现了 Bug，欢迎通过以下方式与我们联系：
@@ -101,6 +135,12 @@ npm run dev
 -   提交 **Pull Requests**
 -   发起 **Issues**
 -   给项目点一个 **Star** ⭐
+
+---
+
+## 📄 开源协议 (License)
+
+本项目基于 **Apache License 2.0** 协议开源。详细信息请参阅 [LICENSE](LICENSE) 文件。
 
 ---
 
