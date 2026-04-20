@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
     }
 
     const url = isLocal
-      ? `https://api.ip2location.io/?key=${apiKey}`
-      : `https://api.ip2location.io/?ip=${ipToLookup}&key=${apiKey}`;
+      ? `https://api.ip2location.io?key=${apiKey}&format=json`
+      : `https://api.ip2location.io?ip=${ipToLookup}&key=${apiKey}&format=json`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
