@@ -41,12 +41,13 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
 
     // Enhanced residential vs hosting detection
-    const hostingKeywords = ['cloud', 'datacenter', 'hosting', 'server', 'vps', 'dedicated', 'data center', 'network solutions', 'amazon', 'google', 'microsoft', 'azure', 'akamai', 'cloudflare', 'digitalocean', 'linode', 'vultr', 'ovh', 'hetzner', 'choopa', 'leaseweb'];
+    // NOTE: ip2location.io returns is_proxy as a STRING "YES" or "NO", not boolean
+    const hostingKeywords = ['datacenter', 'data center', 'hosting provider', 'vps', 'dedicated server', 'amazon aws', 'google cloud', 'microsoft azure', 'akamai', 'cloudflare', 'digitalocean', 'linode', 'vultr', 'ovh', 'hetzner', 'choopa', 'leaseweb'];
     const ispName = (data.isp || "").toLowerCase();
     const orgName = (data.as || data.asn || "").toLowerCase();
     
     const isHosting = hostingKeywords.some(keyword => ispName.includes(keyword) || orgName.includes(keyword));
-    const finalIsProxy = data.is_proxy || isHosting;
+    const finalIsProxy = data.is_proxy === "YES" || isHosting;
 
     // Mapping for common currencies based on country code
     const currencyMap: Record<string, { name: string, symbol: string }> = {
@@ -126,11 +127,12 @@ export async function GET(request: NextRequest) {
       const currencyInfo = currencyMap[fallbackData.countryCode] || { name: '未知', symbol: '' };
 
       // Enhanced residential vs hosting detection
-      const hostingKeywords = ['cloud', 'datacenter', 'hosting', 'server', 'vps', 'dedicated', 'data center', 'network solutions', 'amazon', 'google', 'microsoft', 'azure', 'akamai', 'cloudflare', 'digitalocean', 'linode', 'vultr', 'ovh', 'hetzner', 'choopa', 'leaseweb'];
+      // ip-api.com returns proxy/hosting as actual booleans
+      const hostingKeywords = ['datacenter', 'data center', 'hosting provider', 'vps', 'dedicated server', 'amazon aws', 'google cloud', 'microsoft azure', 'akamai', 'cloudflare', 'digitalocean', 'linode', 'vultr', 'ovh', 'hetzner', 'choopa', 'leaseweb'];
       const ispName = (fallbackData.isp || "").toLowerCase();
       const orgName = (fallbackData.org || fallbackData.as || "").toLowerCase();
-      const isHosting = fallbackData.hosting || hostingKeywords.some(keyword => ispName.includes(keyword) || orgName.includes(keyword));
-      const finalIsProxy = fallbackData.proxy || isHosting;
+      const isHosting = fallbackData.hosting === true || hostingKeywords.some(keyword => ispName.includes(keyword) || orgName.includes(keyword));
+      const finalIsProxy = fallbackData.proxy === true || isHosting;
 
       // Parse ASN and Org more cleanly
       let displayAsn = "";
