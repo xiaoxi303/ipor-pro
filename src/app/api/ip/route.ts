@@ -41,13 +41,13 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
 
     // Enhanced residential vs hosting detection
-    // NOTE: ip2location.io returns is_proxy as a STRING "YES" or "NO", not boolean
+    // ip2location.io returns is_proxy as boolean true/false
     const hostingKeywords = ['datacenter', 'data center', 'hosting provider', 'vps', 'dedicated server', 'amazon aws', 'google cloud', 'microsoft azure', 'akamai', 'cloudflare', 'digitalocean', 'linode', 'vultr', 'ovh', 'hetzner', 'choopa', 'leaseweb'];
     const ispName = (data.isp || "").toLowerCase();
     const orgName = (data.as || data.asn || "").toLowerCase();
     
     const isHosting = hostingKeywords.some(keyword => ispName.includes(keyword) || orgName.includes(keyword));
-    const finalIsProxy = data.is_proxy === "YES" || isHosting;
+    const finalIsProxy = data.is_proxy === true || isHosting;
 
     // Mapping for common currencies based on country code
     const currencyMap: Record<string, { name: string, symbol: string }> = {
@@ -96,10 +96,12 @@ export async function GET(request: NextRequest) {
         riskScore: finalIsProxy ? 85 : 15,
         is_proxy: finalIsProxy,
         timestamp: new Date().toISOString(),
+        source: "ip2location"
       });
     }
     
-    throw new Error('IP2Location failed');
+    // If we reach here, data.ip was not present
+    throw new Error(data.error?.error_message || 'IP2Location failed with unknown error');
   } catch (error: any) {
     console.warn('IP2Location failed, trying fallback...', error.message);
     
@@ -163,6 +165,8 @@ export async function GET(request: NextRequest) {
         riskScore: finalIsProxy ? 85 : 20,
         is_proxy: finalIsProxy,
         timestamp: new Date().toISOString(),
+        source: "ip-api fallback",
+        error_debug: error.message
       });
     } catch (fallbackError: any) {
       return NextResponse.json({ error: '无法获取 IP 数据' }, { status: 500 });
