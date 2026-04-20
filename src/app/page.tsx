@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -57,9 +59,11 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const ipParam = params.get('ip');
-    fetchData(ipParam || undefined);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const ipParam = params.get('ip');
+      fetchData(ipParam || undefined);
+    }
   }, []);
 
   const handleSearch = (ip: string) => {

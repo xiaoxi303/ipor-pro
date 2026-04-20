@@ -77,7 +77,7 @@ export default function Hero({ ip, riskScore, city, country, isLoading, onSearch
 
         <div className="flex items-center justify-center gap-4 mb-8">
           <button 
-            onClick={() => window.print()}
+            onClick={() => typeof window !== 'undefined' && window.print()}
             className="group flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
           >
             <div className="p-1 rounded-md bg-primary/20 text-primary group-hover:scale-110 transition-transform">
