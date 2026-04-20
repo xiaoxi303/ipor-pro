@@ -136,7 +136,7 @@ export default function Home() {
                   <InfoItem label="自治系统 (ASN)" value={data?.asn} />
                   <WebRTCDetector />
                   <InfoItem label="组织机构" value={data?.asn_org} />
-                  <InfoItem label="主机名" value={data?.hostname || "不可用"} />
+                  <InfoItem label="网络类型" value={data?.org || "未知"} />
                 </InfoCard>
               </div>
 
