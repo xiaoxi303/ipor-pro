@@ -1,12 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import InfoCard, { InfoItem } from "@/components/InfoCard";
 
-const Map = dynamic(() => import("@/components/Map"), { 
+const Map = nextDynamic(() => import("@/components/Map"), { 
   ssr: false,
   loading: () => <div className="h-[400px] w-full bg-white/5 rounded-3xl animate-pulse" />
 });
