@@ -1,5 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+async function getHostname(ip: string): Promise<string> {
+  try {
+    let reverseIp = '';
+    if (ip.includes('.')) {
+      reverseIp = ip.split('.').reverse().join('.') + '.in-addr.arpa';
+    } else if (ip.includes(':')) {
+      // For IPv6, use ip-api.com as parsing it into ip6.arpa is complex
+      const res = await fetch(`http://ip-api.com/json/${ip}?fields=reverse`);
+      const data = await res.json();
+      return data.reverse || "";
+    }
+
+    if (reverseIp) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`https://dns.google/resolve?name=${reverseIp}&type=PTR`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (data.Answer && data.Answer.length > 0) {
+        let ptr = data.Answer[0].data;
+        if (ptr.endsWith('.')) ptr = ptr.slice(0, -1);
+        return ptr;
+      }
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return "";
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const queryIp = searchParams.get('ip');
@@ -36,7 +66,10 @@ export async function GET(request: NextRequest) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch(url, { signal: controller.signal });
+    const [response, hostname] = await Promise.all([
+      fetch(url, { signal: controller.signal }),
+      getHostname(ipToLookup)
+    ]);
     clearTimeout(timeoutId);
     const data = await response.json();
 
@@ -93,6 +126,7 @@ export async function GET(request: NextRequest) {
         asn_org: displayOrg,
         org: finalIsProxy ? "Data Center / Hosting" : "Residential / Corporate",
         isp: data.isp || displayOrg || "Unknown",
+        hostname: hostname || "",
         riskScore: finalIsProxy ? 85 : 15,
         is_proxy: finalIsProxy,
         timestamp: new Date().toISOString(),
@@ -108,8 +142,8 @@ export async function GET(request: NextRequest) {
     try {
       // Fallback: ip-api.com
       const fallbackUrl = isLocal 
-        ? `http://ip-api.com/json/?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,proxy,hosting,query`
-        : `http://ip-api.com/json/${ipToLookup}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,proxy,hosting,query`;
+        ? `http://ip-api.com/json/?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,proxy,hosting,query,reverse`
+        : `http://ip-api.com/json/${ipToLookup}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,proxy,hosting,query,reverse`;
       
       const fallbackRes = await fetch(fallbackUrl);
       const fallbackData = await fallbackRes.json();
@@ -162,6 +196,7 @@ export async function GET(request: NextRequest) {
         asn_org: displayOrg,
         org: finalIsProxy ? "Data Center / Hosting" : "Residential / Corporate",
         isp: fallbackData.isp || displayOrg,
+        hostname: fallbackData.reverse || "",
         riskScore: finalIsProxy ? 85 : 20,
         is_proxy: finalIsProxy,
         timestamp: new Date().toISOString(),
