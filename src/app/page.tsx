@@ -1,10 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import InfoCard, { InfoItem } from "@/components/InfoCard";
-import Map from "@/components/Map";
+
+const Map = dynamic(() => import("@/components/Map"), { 
+  ssr: false,
+  loading: () => <div className="h-[400px] w-full bg-white/5 rounded-3xl animate-pulse" />
+});
+
 import ServiceStatus from "@/components/ServiceStatus";
 import ConnectivityChecker from "@/components/ConnectivityChecker";
 import WebRTCDetector from "@/components/WebRTCDetector";
