@@ -5,133 +5,132 @@ export async function GET(request: NextRequest) {
   const queryIp = searchParams.get('ip');
 
   const cfIp = request.headers.get('cf-connecting-ip');
+  const realIp = request.headers.get('x-real-ip');
   const forwarded = request.headers.get('x-forwarded-for');
-  const clientIp = cfIp || (forwarded ? forwarded.split(',')[0].trim() : '');
   
-  // 核心：强制优先使用搜索框输入的 IP
+  let clientIp = cfIp || realIp || (forwarded ? forwarded.split(',')[0].trim() : '');
   let ipToLookup = queryIp || clientIp;
   
-  // 极简判断：只要不是明显的本地回环，就去查公网 API
-  const isLocal = !ipToLookup || ipToLookup === '127.0.0.1' || ipToLookup === '::1';
+  const isLocal = !ipToLookup || 
+                  ipToLookup === '::1' || 
+                  ipToLookup === '127.0.0.1' || 
+                  ipToLookup.includes('::ffff:127.0.0.1');
 
-  let baseData: any = null;
-  let source = "unknown";
-
-  // --- API 聚合与鲁棒性逻辑 ---
-  const tryFetch = async (url: string) => {
-    try {
-      const res = await fetch(url, { 
-        cache: 'no-store',
-        signal: AbortSignal.timeout(5000) 
-      });
-      if (res.ok) return await res.json();
-    } catch (e) { 
-      return null; 
-    }
-  };
-
-  // 1. 尝试 IP2Location
   const apiKey = process.env.IP2LOCATION_API_KEY;
-  if (apiKey) {
-    const url = isLocal
-      ? `https://api.ip2location.io?key=${apiKey}&format=json`
-      : `https://api.ip2location.io?ip=${encodeURIComponent(ipToLookup)}&key=${apiKey}&format=json`;
-    baseData = await tryFetch(url);
-    if (baseData?.ip) source = "ip2location";
+
+  if (!apiKey) {
+    return NextResponse.json({ error: 'IP2Location API key is missing' }, { status: 500 });
   }
 
-  // 2. 尝试 ip-api.com (Fallback)
-  if (!baseData?.ip && !isLocal && ipToLookup) {
-    const fb = await tryFetch(`http://ip-api.com/json/${ipToLookup}?fields=66846719`);
-    if (fb?.status === 'success') {
-      baseData = {
+  try {
+    // API endpoint for ip2location.io (Professional lookup)
+    const url = isLocal
+      ? `https://api.ip2location.io?key=${apiKey}&format=json`
+      : `https://api.ip2location.io?ip=${ipToLookup}&key=${apiKey}&format=json`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.error_message || 'API Error');
+    }
+
+    // Use REAL data from IP2Location
+    // is_proxy and threat categories are provided by the API
+    const isProxy = data.is_proxy === true || !!data.proxy;
+    
+    // Calculate a more realistic Risk Score based on threat data if available, 
+    // otherwise fallback to proxy status
+    let riskScore = 0;
+    if (isProxy) riskScore += 50;
+    if (data.is_vpn) riskScore += 20;
+    if (data.is_tor) riskScore += 30;
+    if (data.is_data_center) riskScore += 10;
+    if (riskScore > 100) riskScore = 100;
+    
+    // If no specific threat data, just use 10 for clean residential
+    if (riskScore === 0) riskScore = data.is_residential ? 5 : 15;
+
+    // Currency mapping from API or fallback
+    const currency = data.time_zone_info?.currency?.name || "Unknown";
+    const currencySymbol = data.time_zone_info?.currency?.symbol || "";
+
+    // ASN extraction
+    let displayAsn = data.asn || "";
+    let displayOrg = data.as || data.asn || "Unknown";
+    
+    if (displayOrg.startsWith('AS')) {
+      const parts = displayOrg.split(' ');
+      displayAsn = parts[0];
+      displayOrg = parts.slice(1).join(' ');
+    }
+
+    return NextResponse.json({
+      ip: data.ip,
+      country_name: data.country_name,
+      country_code: data.country_code,
+      region: data.region_name,
+      city: data.city_name,
+      zip: data.zip_code,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      timezone: data.time_zone,
+      currency: currency,
+      currency_symbol: currencySymbol,
+      asn: displayAsn,
+      asn_org: displayOrg,
+      // Map usage type directly from API if available
+      org: data.usage_type || (isProxy ? "Data Center / Hosting" : "Residential"),
+      isp: data.isp || displayOrg,
+      riskScore: riskScore,
+      is_proxy: isProxy,
+      // Pass raw threat data for high-fidelity detection
+      threat: {
+        is_vpn: data.is_vpn || false,
+        is_tor: data.is_tor || false,
+        is_data_center: data.is_data_center || false,
+        is_public_proxy: data.is_public_proxy || false,
+        is_web_proxy: data.is_web_proxy || false,
+        is_residential: data.is_residential || false
+      },
+      timestamp: new Date().toISOString(),
+      source: "ip2location.io (Official API)"
+    });
+
+  } catch (error: any) {
+    console.error('IP2Location Primary API Failed:', error.message);
+    
+    // Final Fallback to IP-API (Ensuring it's only used if the primary fails)
+    try {
+      const fallbackUrl = isLocal 
+        ? `http://ip-api.com/json/?fields=66846719` 
+        : `http://ip-api.com/json/${ipToLookup}?fields=66846719`;
+      
+      const fallbackRes = await fetch(fallbackUrl);
+      const fb = await fallbackRes.json();
+
+      return NextResponse.json({
         ip: fb.query,
         country_name: fb.country,
         country_code: fb.countryCode,
         region: fb.regionName,
         city: fb.city,
+        zip: fb.zip,
         latitude: fb.lat,
         longitude: fb.lon,
         timezone: fb.timezone,
-        currency: fb.currency,
-        asn: fb.as?.split(' ')[0],
-        as: fb.as,
+        currency: "Unknown",
+        asn: fb.as ? fb.as.split(' ')[0] : "",
+        asn_org: fb.as ? fb.as.split(' ').slice(1).join(' ') : fb.org,
+        org: fb.hosting ? "Hosting" : "Residential",
         isp: fb.isp,
-        org: fb.org,
+        riskScore: fb.proxy || fb.hosting ? 80 : 10,
         is_proxy: fb.proxy || fb.hosting,
-        usage_type: fb.mobile ? "MOB" : (fb.proxy || fb.hosting ? "DCH" : "RES")
-      };
-      source = "ip-api-fallback";
+        source: "ip-api fallback (verification required)"
+      });
+    } catch (e) {
+      return NextResponse.json({ error: 'Data Fetch Error' }, { status: 500 });
     }
   }
-
-  // --- 极致降级（防止前端崩溃） ---
-  if (!baseData?.ip) {
-    baseData = {
-      ip: ipToLookup || "0.0.0.0",
-      country_name: "Unknown",
-      country_code: "XX",
-      region: "Unknown",
-      city: "Unknown",
-      isp: "Unknown ISP",
-      is_proxy: false
-    };
-    source = "safety-placeholder";
-  }
-
-  // --- 智能引擎核心：全实时映射 ---
-  const isp = (baseData.isp || "").toLowerCase();
-  const asName = (baseData.as || "").toLowerCase();
-  const apiUsageType = (baseData.usage_type || baseData.proxy?.usage_type || "").toUpperCase();
-  const fullContext = `${isp} ${asName} ${apiUsageType}`;
-
-  const hostingKeywords = ['datacenter', 'hosting', 'vps', 'cloud', 'aws', 'azure', 'cloudflare', 'akamai', 'digitalocean', 'xtom', 'm247', 'ovh', 'choopa', 'zenlayer', 'leaseweb', 'quadranet'];
-  const mobileKeywords = ['mobile', 'cell', 'lte', '5g', '4g', 'verizon', 't-mobile'];
-  
-  // 1. 真实场景识别
-  let usageType = "Residential / Fixed Line";
-  let persona = "典型的住宅用户或企业专线出口，表现为高度洁净。";
-  
-  const isDch = apiUsageType.includes('DCH') || apiUsageType.includes('DATA CENTER') || hostingKeywords.some(k => fullContext.includes(k));
-  const isMob = apiUsageType.includes('MOB') || mobileKeywords.some(k => fullContext.includes(k));
-  const isVpn = baseData.proxy?.proxy_type === 'VPN' || baseData.is_proxy;
-
-  if (isDch) {
-    usageType = "Data Center / Hosting";
-    persona = `检测到归属于 ${baseData.isp || "机房供应商"} 的托管网络，常用于服务器或大规模网络分发。`;
-  } else if (isMob) {
-    usageType = "Mobile Network";
-    persona = "移动端蜂窝网络接入，具有高度的动态特征与基站转发特征。";
-  } else if (isVpn) {
-    usageType = "VPN / Proxy";
-    persona = "检测到加密隧道或中继代理特征，真实源地址已被隐藏。";
-  }
-
-  // 2. 真实 BGP 路径（基于 ASN）
-  const asnNum = baseData.asn?.toString().replace('AS', '') || "0";
-  let bgpPath: string[] = [];
-  if (asnNum !== "0") {
-     bgpPath = [`AS${asnNum} (${baseData.asn_org || baseData.isp})`];
-  }
-
-  // 3. 实时风险评分与威胁日志
-  const risk = baseData.proxy?.fraud_score ?? (isDch || isVpn ? 85 : 15);
-  const threatType = baseData.proxy?.threat;
-  const attackLogs = [];
-  if (threatType && threatType !== '-') {
-    attackLogs.push({ time: "Recently", type: threatType, severity: "High" });
-  } else if (risk > 70) {
-    attackLogs.push({ time: "Last 24h", type: isVpn ? "Anonymous Proxy Access" : "Data Center Activity", severity: "Medium" });
-  }
-
-  return NextResponse.json({
-    ...baseData,
-    usage_type: usageType,
-    persona: persona,
-    bgp_path: bgpPath,
-    attack_logs: attackLogs,
-    riskScore: risk,
-    source: source,
-    timestamp: new Date().toISOString()
-  });
 }
+

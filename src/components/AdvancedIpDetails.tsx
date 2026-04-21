@@ -42,83 +42,73 @@ export default function AdvancedIpDetails({ data }: AdvancedIpDetailsProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* AS & Range */}
-        <div className="space-y-4 border border-white/5 bg-black/20 rounded-2xl p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Network className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-tight">AS 域名</span>
-              </div>
-              <p className="text-base font-bold text-foreground break-all">{getAsDomain(data?.asn_org)}</p>
+        <div className="space-y-4 col-span-1 lg:col-span-1 border border-white/5 bg-black/20 rounded-2xl p-5">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Network className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">AS 域名</span>
             </div>
-            <div className="sm:text-right">
-              <div className="flex items-center sm:justify-end gap-2 mb-1">
-                <Server className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-tight">IP 范围 (CIDR /24)</span>
-              </div>
-              <p className="text-sm font-mono font-bold text-primary/90">{ipRange}</p>
+            <p className="text-lg font-bold truncate" title={getAsDomain(data?.asn_org)}>{getAsDomain(data?.asn_org)}</p>
+          </div>
+          <div className="pt-2 border-t border-white/5 mt-auto">
+            <div className="flex items-center gap-2 mb-1">
+              <Server className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">IP 范围 (CIDR /24)</span>
             </div>
+            <p className="text-sm font-medium font-mono bg-white/5 px-2 py-1 rounded inline-block text-primary/90">{ipRange}</p>
           </div>
         </div>
 
         {/* Traffic Ratio */}
-        <div className="space-y-4 border border-white/5 bg-black/20 rounded-2xl p-5">
-          <div className="flex items-center gap-2">
+        <div className="space-y-4 col-span-1 lg:col-span-1 border border-white/5 bg-black/20 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
             <Activity className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-tight">人机流量比 (估计值)</span>
+            <span className="text-sm font-medium text-muted-foreground">人机流量比 (估计值)</span>
           </div>
-          <div className="flex items-end justify-between gap-2">
-            <div className="flex items-end gap-2">
-              <span className="text-3xl font-black text-primary leading-none">{humanRatio}%</span>
-              <span className="text-xs text-muted-foreground font-medium uppercase">人类流量</span>
-            </div>
-            <div className="flex items-end gap-2 text-right">
-              <span className="text-xs text-muted-foreground font-medium uppercase">恶意爬虫</span>
-              <span className="text-2xl font-bold text-red-400 leading-none">{botRatio}%</span>
-            </div>
+          <div className="flex items-end gap-2 mb-2">
+            <span className="text-3xl font-black text-primary">{humanRatio}%</span>
+            <span className="text-sm text-muted-foreground pb-1">人类</span>
+            <span className="text-xl font-bold text-red-400 ml-auto">{botRatio}%</span>
+            <span className="text-sm text-muted-foreground pb-1">爬虫</span>
           </div>
-          <div className="w-full h-2.5 bg-red-400/10 rounded-full overflow-hidden flex">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${humanRatio}%` }}
-              transition={{ duration: 1, ease: "easeOut" }}
-              className="h-full bg-primary shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
-            />
+          <div className="w-full h-2 bg-red-400/20 rounded-full overflow-hidden flex">
+            <div className="h-full bg-primary" style={{ width: `${humanRatio}%` }} />
             <div className="h-full bg-red-400" style={{ width: `${botRatio}%` }} />
           </div>
         </div>
 
         {/* IP Properties */}
-        <div className="border border-white/5 bg-black/20 rounded-2xl p-5">
-          <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-            <div className="space-y-1.5">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">IP 来源</span>
-              <span className="inline-flex px-2 py-0.5 rounded bg-white/10 text-[11px] font-black uppercase text-foreground border border-white/5">
+        <div className="space-y-4 col-span-1 lg:col-span-1 border border-white/5 bg-black/20 rounded-2xl p-5">
+          <div className="grid grid-cols-2 gap-4 h-full">
+            <div>
+              <span className="text-xs text-muted-foreground block mb-1">IP 来源</span>
+              <span className="px-2.5 py-1 rounded-md bg-white/10 text-xs font-bold block w-fit">
                 {data?.is_proxy ? "数据中心 (DC)" : "住宅网络 (ISP)"}
               </span>
             </div>
-            <div className="space-y-1.5">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">IP 属性</span>
-              <span className="inline-flex px-2 py-0.5 rounded bg-green-500/10 text-[11px] font-black uppercase text-green-400 border border-green-500/20">
+            <div>
+              <span className="text-xs text-muted-foreground block mb-1">IP 属性</span>
+              <span className="px-2.5 py-1 rounded-md bg-green-500/20 text-green-500 text-xs font-bold block w-fit">
                 原生 IP (Native)
               </span>
             </div>
-            <div className="space-y-1.5 pt-4 border-t border-white/5">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block flex items-center gap-1">
-                <Shield className="h-3 w-3" /> CF 系数
+            <div className="pt-2 border-t border-white/5">
+              <span className="text-[10px] text-muted-foreground uppercase block mb-1 flex items-center gap-1">
+                <Shield className="h-3 w-3" /> Cloudflare 系数
               </span>
-              <span className="text-sm font-black text-yellow-500">{cfScore} <span className="text-[10px] text-muted-foreground font-normal">/ 100</span></span>
+              <span className="text-sm font-bold text-yellow-500">{cfScore} / 100</span>
             </div>
-            <div className="space-y-1.5 pt-4 border-t border-white/5">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block flex items-center gap-1">
+            <div className="pt-2 border-t border-white/5">
+              <span className="text-[10px] text-muted-foreground uppercase block mb-1 flex items-center gap-1">
                 <Info className="h-3 w-3" /> IPor 系数
               </span>
-              <span className="text-sm font-black text-primary">{iporScore} <span className="text-[10px] text-muted-foreground font-normal">/ 100</span></span>
+              <span className="text-sm font-bold text-primary">{iporScore} / 100</span>
             </div>
           </div>
         </div>
+
       </div>
     </motion.div>
   );
