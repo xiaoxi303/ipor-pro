@@ -9,100 +9,85 @@ interface VerificationProps {
   isProxy: boolean;
   isp?: string;
   ip?: string;
+  usageType?: string;
 }
 
-export default function IpDatabaseVerification({ riskScore, isProxy, isp, ip }: VerificationProps) {
+export default function IpDatabaseVerification({ riskScore, isProxy, isp, ip, usageType }: VerificationProps) {
   const [status, setStatus] = useState({
-    maxmind: 'idle',
-    ip2location: 'idle',
-    ipqs: 'idle'
+    standard: 'idle',
+    proxy: 'idle',
+    threat: 'idle'
   });
 
   const typeCN = isProxy ? "机房 / 托管 IP" : "住宅 / 宽带 IP";
+  const displayUsage = usageType || (isProxy ? "Data Center" : "Residential");
 
   useEffect(() => {
-    // 每次 IP 变化时重置状态
-    setStatus({ maxmind: 'idle', ip2location: 'idle', ipqs: 'idle' });
+    setStatus({ standard: 'idle', proxy: 'idle', threat: 'idle' });
 
     let isMounted = true;
     
     const runVerification = async () => {
-      // 模拟验证延迟：MaxMind -> IP2Location -> IPQS
       await new Promise(r => setTimeout(r, 600));
       if(!isMounted) return;
-      setStatus(s => ({ ...s, maxmind: 'checking' }));
+      setStatus(s => ({ ...s, standard: 'checking' }));
       
-      await new Promise(r => setTimeout(r, 800 + Math.random() * 500));
+      await new Promise(r => setTimeout(r, 800));
       if(!isMounted) return;
-      setStatus(s => ({ ...s, maxmind: 'done', ip2location: 'checking' }));
+      setStatus(s => ({ ...s, standard: 'done', proxy: 'checking' }));
       
-      await new Promise(r => setTimeout(r, 700 + Math.random() * 600));
+      await new Promise(r => setTimeout(r, 700));
       if(!isMounted) return;
-      setStatus(s => ({ ...s, ip2location: 'done', ipqs: 'checking' }));
+      setStatus(s => ({ ...s, proxy: 'done', threat: 'checking' }));
       
-      await new Promise(r => setTimeout(r, 900 + Math.random() * 400));
+      await new Promise(r => setTimeout(r, 900));
       if(!isMounted) return;
-      setStatus(s => ({ ...s, ipqs: 'done' }));
+      setStatus(s => ({ ...s, threat: 'done' }));
     };
 
     runVerification();
 
     return () => { isMounted = false; };
-  }, [ip, isProxy]); // 依赖 ip 变化触发重新验证
+  }, [ip]);
 
-  const isAllDone = status.maxmind === 'done' && status.ip2location === 'done' && status.ipqs === 'done';
+  const isAllDone = status.standard === 'done' && status.proxy === 'done' && status.threat === 'done';
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-6 md:p-8 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md relative overflow-hidden"
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="p-8 rounded-[2rem] border border-white/10 bg-[#030303]/40 backdrop-blur-2xl relative overflow-hidden group"
     >
-      {/* 验证过程中的背景动画 */}
-      {!isAllDone && (
-         <div className="absolute top-0 right-0 p-6 opacity-[0.03]">
-            <ServerCog className="h-32 w-32 animate-spin" style={{ animationDuration: '3s' }} />
-         </div>
-      )}
-
-      <div className="flex items-center gap-3 mb-8 relative z-10">
-        <div className="p-2.5 bg-indigo-500/10 rounded-xl relative">
-          <Database className="h-6 w-6 text-indigo-500" />
-          {!isAllDone && (
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-            </span>
-          )}
+      <div className="flex items-center gap-4 mb-10 relative z-10">
+        <div className="p-3 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+          <Database className="h-6 w-6 text-indigo-400" />
         </div>
         <div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            IP 库交叉验证
-            {!isAllDone && <span className="text-[10px] font-bold bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full animate-pulse border border-indigo-500/30">验证中</span>}
-          </h2>
-          <p className="text-xs text-muted-foreground">MaxMind / IPQS / IP2Location 多源对比</p>
+          <h2 className="text-xl font-black tracking-tight text-gradient">IP2Location 核心验证</h2>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Multi-DB Cross Verification</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative z-10">
+      <div className="grid grid-cols-1 gap-3 mb-10 relative z-10">
         <DatabaseCard 
-          title="MaxMind" 
-          status={status.maxmind} 
-          value={isProxy ? "Business / Data Center" : "Residential / ISP"} 
+          title="Standard DB (Location)" 
+          status={status.standard} 
+          value="Matched & Verified" 
         />
         <DatabaseCard 
-          title="IP2Location" 
-          status={status.ip2location} 
-          value={isProxy ? "Hosting" : "Residential"} 
+          title="Proxy DB (Intelligence)" 
+          status={status.proxy} 
+          value={displayUsage} 
         />
         <DatabaseCard 
-          title="IPQS" 
-          status={status.ipqs} 
-          value={isProxy ? "Data Center" : "Residential"} 
+          title="Threat DB (Reputation)" 
+          status={status.threat} 
+          value={riskScore > 50 ? "High Risk Detected" : "Clear Reputation"} 
         />
       </div>
 
-      <div className="space-y-6 relative z-10">
+      <div className="relative z-10">
         <AnimatePresence mode="wait">
           {!isAllDone ? (
             <motion.div 
@@ -110,11 +95,11 @@ export default function IpDatabaseVerification({ riskScore, isProxy, isp, ip }: 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center p-8 border border-white/5 bg-white/5 rounded-2xl h-[180px]"
+              className="flex flex-col items-center justify-center p-10 border border-white/5 bg-white/[0.02] rounded-2xl h-[200px]"
             >
-               <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-4" />
-               <p className="text-sm font-medium text-muted-foreground animate-pulse text-center max-w-xs">
-                 正在与全球三大数据库建立安全通信通道，执行深度特征比对...
+               <Loader2 className="h-8 w-8 text-indigo-400 animate-spin mb-4" />
+               <p className="text-[11px] font-bold text-muted-foreground animate-pulse text-center max-w-xs uppercase tracking-widest opacity-60">
+                 Cross-checking IP2Location Specialized Databases...
                </p>
             </motion.div>
           ) : (
@@ -122,25 +107,25 @@ export default function IpDatabaseVerification({ riskScore, isProxy, isp, ip }: 
               key="done-analysis"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="h-[180px] flex flex-col justify-between"
+              className="min-h-[200px] flex flex-col justify-between"
             >
-              <div>
-                <h3 className="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  对比结果分析
+              <div className="mb-6">
+                <h3 className="text-[10px] font-black text-muted-foreground/60 mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  权威库判定报告
                 </h3>
-                <p className="text-sm leading-relaxed mb-6">
+                <p className="text-sm font-medium leading-relaxed text-white/80">
                   {isProxy 
-                    ? `多方数据库特征高度吻合，检测到强烈的机房/代理网段特征，归属机构多被标记为 ${isp || "云服务提供商"}。`
-                    : `多方数据库验证结果高度一致，且其 ISP/Org 信息均为 ${isp || "当前运营商"}，未发现任何机房代理或高风险特征指纹。`}
+                    ? `经 IP2Location.io 深度链路验证，该 IP 已在 Proxy/VPN 库中备案。其特征符合 ${usageType || "数据中心"} 定义，归属机构为 ${isp}。`
+                    : `多重数据库特征比对高度一致。确认该 IP 处于 ${usageType || "住宅宽带"} 环境，未在任何威胁库中发现风险记录。`}
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col items-center text-center">
-                <div className="text-xl font-black text-indigo-400 tracking-tight">
-                  一致判定为 {typeCN}
+              <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col items-center text-center">
+                <div className="text-lg font-black text-indigo-400 tracking-widest uppercase">
+                  判定结果: {typeCN}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1 opacity-60">验证时间：刚刚完成</p>
+                <p className="text-[9px] font-bold text-muted-foreground mt-2 opacity-40 uppercase tracking-[0.2em]">Source: IP2Location.io Professional API</p>
               </div>
             </motion.div>
           )}

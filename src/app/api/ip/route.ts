@@ -36,29 +36,31 @@ export async function GET(request: NextRequest) {
     }
 
     // Use REAL data from IP2Location
-    // is_proxy and threat categories are provided by the API
     const isProxy = data.is_proxy === true || !!data.proxy;
     
-    // Calculate a more realistic Risk Score based on threat data if available, 
-    // otherwise fallback to proxy status
+    // Comprehensive Risk Score Calculation
     let riskScore = 0;
-    if (isProxy) riskScore += 50;
-    if (data.is_vpn) riskScore += 20;
-    if (data.is_tor) riskScore += 30;
-    if (data.is_data_center) riskScore += 10;
-    if (riskScore > 100) riskScore = 100;
+    if (data.is_vpn) riskScore += 35;
+    if (data.is_tor) riskScore += 45;
+    if (data.is_data_center) riskScore += 20;
+    if (data.is_public_proxy) riskScore += 30;
+    if (data.is_web_proxy) riskScore += 25;
+    if (data.is_spam) riskScore += 30;
     
-    // If no specific threat data, just use 10 for clean residential
-    if (riskScore === 0) riskScore = data.is_residential ? 5 : 15;
-
-    // Currency mapping from API or fallback
-    const currency = data.time_zone_info?.currency?.name || "Unknown";
-    const currencySymbol = data.time_zone_info?.currency?.symbol || "";
+    // Caps risk score at 100
+    riskScore = Math.min(riskScore, 100);
+    
+    // If no major threats, use usage_type for baseline
+    if (riskScore === 0) {
+      if (data.is_residential) riskScore = 5;
+      else if (data.usage_type === 'EDU') riskScore = 10;
+      else if (data.usage_type === 'GOV') riskScore = 8;
+      else riskScore = 15;
+    }
 
     // ASN extraction
     let displayAsn = data.asn || "";
     let displayOrg = data.as || data.asn || "Unknown";
-    
     if (displayOrg.startsWith('AS')) {
       const parts = displayOrg.split(' ');
       displayAsn = parts[0];
@@ -66,6 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
+      // Core Geolocation
       ip: data.ip,
       country_name: data.country_name,
       country_code: data.country_code,
@@ -75,24 +78,49 @@ export async function GET(request: NextRequest) {
       latitude: data.latitude,
       longitude: data.longitude,
       timezone: data.time_zone,
-      currency: currency,
-      currency_symbol: currencySymbol,
+      
+      // Network & Infrastructure
       asn: displayAsn,
       asn_org: displayOrg,
-      // Map usage type directly from API if available
-      org: data.usage_type || (isProxy ? "Data Center / Hosting" : "Residential"),
       isp: data.isp || displayOrg,
+      org: data.usage_type || (isProxy ? "Data Center" : "ISP"),
+      domain: data.domain || "Unknown",
+      net_speed: data.net_speed || "Unknown",
+      
+      // Telephony & Weather (Advanced)
+      idd_code: data.idd_code,
+      area_code: data.area_code,
+      weather_station_code: data.weather_station_code,
+      weather_station_name: data.weather_station_name,
+      
+      // Mobile Data (Advanced)
+      mcc: data.mcc,
+      mnc: data.mnc,
+      mobile_brand: data.mobile_brand,
+      
+      // Physical & Environment
+      elevation: data.elevation,
+      usage_type: data.usage_type,
+      
+      // Security & Risk
       riskScore: riskScore,
       is_proxy: isProxy,
-      // Pass raw threat data for high-fidelity detection
       threat: {
         is_vpn: data.is_vpn || false,
         is_tor: data.is_tor || false,
         is_data_center: data.is_data_center || false,
         is_public_proxy: data.is_public_proxy || false,
         is_web_proxy: data.is_web_proxy || false,
-        is_residential: data.is_residential || false
+        is_residential: data.is_residential || false,
+        is_spam: data.is_spam || false,
+        is_bot: data.is_bot || false,
+        is_scanner: data.is_scanner || false
       },
+      
+      // Currency Info
+      currency: data.time_zone_info?.currency?.name || "Unknown",
+      currency_symbol: data.time_zone_info?.currency?.symbol || "",
+      
       timestamp: new Date().toISOString(),
       source: "ip2location.io (Official API)"
     });
@@ -119,18 +147,16 @@ export async function GET(request: NextRequest) {
         latitude: fb.lat,
         longitude: fb.lon,
         timezone: fb.timezone,
-        currency: "Unknown",
         asn: fb.as ? fb.as.split(' ')[0] : "",
         asn_org: fb.as ? fb.as.split(' ').slice(1).join(' ') : fb.org,
-        org: fb.hosting ? "Hosting" : "Residential",
+        org: fb.hosting ? "Hosting" : "ISP",
         isp: fb.isp,
         riskScore: fb.proxy || fb.hosting ? 80 : 10,
         is_proxy: fb.proxy || fb.hosting,
-        source: "ip-api fallback (verification required)"
+        source: "ip-api fallback"
       });
     } catch (e) {
       return NextResponse.json({ error: 'Data Fetch Error' }, { status: 500 });
     }
   }
 }
-

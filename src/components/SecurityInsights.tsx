@@ -51,14 +51,19 @@ export default function SecurityInsights({ riskScore, isProxy, isp }: SecurityIn
   const insights = getInsights();
 
   return (
-    <div className="p-6 md:p-8 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-2.5 bg-yellow-500/10 rounded-xl">
-          <Lightbulb className="h-6 w-6 text-yellow-500" />
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      className="p-8 rounded-[2rem] border border-white/10 bg-[#030303]/40 backdrop-blur-2xl relative overflow-hidden group"
+    >
+      <div className="flex items-center gap-4 mb-10">
+        <div className="p-3 bg-amber-400/10 rounded-2xl border border-amber-400/20">
+          <Lightbulb className="h-6 w-6 text-amber-400" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">深度安全建议</h2>
-          <p className="text-xs text-muted-foreground">Professional Security Insights</p>
+          <h2 className="text-xl font-black tracking-tight text-gradient">深度安全建议</h2>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Professional Security Insights</p>
         </div>
       </div>
 
@@ -66,28 +71,28 @@ export default function SecurityInsights({ riskScore, isProxy, isp }: SecurityIn
         {insights.map((item, idx) => (
           <motion.div 
             key={idx}
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: idx * 0.1 }}
-            className="group flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all"
+            className="group/insight flex gap-5 p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all duration-500"
           >
-            <div className={`mt-1 p-1.5 rounded-lg h-fit ${
-              item.type === 'success' ? 'bg-green-500/10 text-green-500' :
-              item.type === 'warning' ? 'bg-yellow-500/10 text-yellow-500' :
-              item.type === 'danger' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'
+            <div className={`mt-1 p-2 rounded-xl h-fit border shrink-0 transition-transform duration-500 group-hover/insight:scale-110 ${
+              item.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+              item.type === 'warning' ? 'bg-amber-400/10 text-amber-400 border-amber-400/20' :
+              item.type === 'danger' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
             }`}>
               <item.icon className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold mb-1 flex items-center gap-2">
+              <h3 className="text-[13px] font-black mb-1.5 flex items-center gap-2 tracking-tight group-hover/insight:text-primary transition-colors">
                 {item.title}
-                <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover/insight:opacity-100 transition-all -translate-x-3 group-hover/insight:translate-x-0" />
               </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+              <p className="text-[11px] text-muted-foreground/80 leading-relaxed font-medium">{item.desc}</p>
             </div>
           </motion.div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }

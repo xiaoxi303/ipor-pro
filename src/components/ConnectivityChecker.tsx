@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Zap, Check, X, Clock, RefreshCw, Activity } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const SERVICES = [
   { id: "google", name: "Google", url: "https://www.google.com/favicon.ico", icon: "🌐" },
@@ -29,7 +30,6 @@ export default function ConnectivityChecker() {
   const testLatency = async (serviceId: string, url: string) => {
     setResults(prev => ({ ...prev, [serviceId]: { ...prev[serviceId], status: "testing", packetsSent: 0, packetsReceived: 0, latency: null } }));
     
-    // 我们将执行 3 次 Ping，模拟真实的 ICMP/TCP 发包并计算抖动 (Jitter)
     const pings: number[] = [];
     const NUM_PINGS = 3;
     let isMounted = true;
@@ -41,9 +41,8 @@ export default function ConnectivityChecker() {
       const start = performance.now();
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s 超时
+        const timeoutId = setTimeout(() => controller.abort(), 3000); 
         
-        // 加入随机数防止浏览器缓存命中，强制真实发包
         await fetch(`${url}?t=${Date.now()}-${Math.random()}`, { 
           mode: "no-cors", 
           cache: "no-store",
@@ -60,16 +59,15 @@ export default function ConnectivityChecker() {
             [serviceId]: { 
               ...prev[serviceId], 
               packetsReceived: i + 1,
-              latency: Math.round(pings.reduce((a, b) => a + b, 0) / pings.length) // 计算当前平均延迟
+              latency: Math.round(pings.reduce((a, b) => a + b, 0) / pings.length) 
             } 
           }));
         }
 
       } catch (e) {
-        // 请求失败（超时或被拦截）
+        // Request failed
       }
       
-      // 每次发包之间的模拟间隔
       if (i < NUM_PINGS - 1 && isMounted) {
         await new Promise(resolve => setTimeout(resolve, 300));
       }
@@ -79,7 +77,6 @@ export default function ConnectivityChecker() {
       setResults(prev => {
         const avgLatency = pings.length > 0 ? Math.round(pings.reduce((a, b) => a + b, 0) / pings.length) : null;
         
-        // 计算网络抖动
         let jitter = 0;
         if (pings.length > 1) {
           let diffs = 0;
@@ -106,10 +103,8 @@ export default function ConnectivityChecker() {
 
   const startAllTests = useCallback(async () => {
     setIsAllTesting(true);
-    // 重置状态
     setResults(SERVICES.reduce((acc, s) => ({ ...acc, [s.id]: { latency: null, status: "idle", packetsSent: 0, packetsReceived: 0 } }), {}));
     
-    // 并发测试所有服务
     const promises = SERVICES.map(s => testLatency(s.id, s.url));
     await Promise.all(promises);
     
@@ -122,58 +117,59 @@ export default function ConnectivityChecker() {
 
   return (
     <div className="flex flex-col h-full -mx-2 -mb-2 mt-2">
-      <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-3 px-2">
-         <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 uppercase tracking-widest font-bold">
-           <Activity className="h-3 w-3" />
-           ICMP/TCP 连通性诊断 (发包: 3/次)
+      <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4 px-2">
+         <div className="text-[10px] text-muted-foreground/60 flex items-center gap-2 uppercase tracking-[0.2em] font-black">
+           <Activity className="h-3 w-3 text-primary" />
+           Connectivity Analysis (3 Packets/Node)
          </div>
          <button 
            onClick={startAllTests} 
            disabled={isAllTesting}
-           className={`p-1.5 rounded-md bg-white/5 hover:bg-white/10 transition-colors border border-white/5 ${isAllTesting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+           className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/10 group"
          >
-           <RefreshCw className={`h-3 w-3 text-foreground ${isAllTesting ? 'animate-spin' : ''}`} />
+           <RefreshCw className={`h-3.5 w-3.5 text-foreground transition-transform duration-700 ${isAllTesting ? 'animate-spin' : 'group-hover:rotate-180'}`} />
          </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-1 gap-2.5">
         {SERVICES.map((s) => {
           const res = results[s.id];
           const isDone = res?.status === "success" || res?.status === "error";
           const lossRate = res?.packetsSent > 0 ? Math.round(((res.packetsSent - res.packetsReceived) / res.packetsSent) * 100) : 0;
           
           return (
-            <div key={s.id} className="p-3 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between group hover:border-white/10 transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="text-base opacity-80">{s.icon}</span>
-                <span className="text-sm font-bold text-foreground/80">{s.name}</span>
+            <div key={s.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between group/service hover:bg-white/[0.04] hover:border-white/10 transition-all duration-500">
+              <div className="flex items-center gap-4">
+                <span className="text-xl transition-transform duration-500 group-hover/service:scale-110">{s.icon}</span>
+                <span className="text-sm font-black tracking-tight text-white/90">{s.name}</span>
               </div>
               
-              <div className="flex items-center gap-4 text-right">
-                {/* 丢包与抖动参数 */}
+              <div className="flex items-center gap-6 text-right">
                 {isDone && res.status === "success" && (
-                   <div className="hidden sm:flex items-center gap-3 text-[10px] text-muted-foreground mr-2 font-mono">
-                     <span title="丢包率" className={lossRate > 0 ? "text-yellow-500" : ""}>Loss: {lossRate}%</span>
-                     <span title="网络抖动">Jitter: {res.jitter}ms</span>
+                   <div className="hidden sm:flex items-center gap-4 text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">
+                     <span className={cn(lossRate > 0 ? "text-amber-400" : "opacity-40")}>LOSS: {lossRate}%</span>
+                     <span className="opacity-40">JTR: {res.jitter}ms</span>
                    </div>
-                )}
+                 )}
 
-                {/* 核心状态展示 */}
-                <div className="w-20 flex justify-end">
+                <div className="w-24 flex justify-end">
                   {res?.status === "idle" ? (
-                    <span className="text-xs text-muted-foreground opacity-50 font-medium">等待中...</span>
+                    <span className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-widest">Idle</span>
                   ) : res?.status === "testing" ? (
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 font-mono">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-primary font-mono tracking-tighter">
                       <Clock className="h-3 w-3 animate-spin" />
                       <span>{res.packetsReceived}/{res.packetsSent}</span>
                     </div>
                   ) : res?.status === "error" ? (
-                    <span className="text-[10px] font-bold text-red-500 flex items-center gap-1 uppercase tracking-widest">
-                      <X className="h-3 w-3" /> 超时
+                    <span className="text-[10px] font-black text-rose-500 flex items-center gap-1.5 uppercase tracking-widest">
+                      <X className="h-3.5 w-3.5" /> Timeout
                     </span>
                   ) : (
-                    <span className={`text-sm font-black font-mono flex items-center gap-1 ${res.latency! < 100 ? 'text-green-500' : res.latency! < 250 ? 'text-yellow-500' : 'text-orange-500'}`}>
-                      {res.latency} <span className="text-[10px] opacity-60">ms</span>
+                    <span className={cn(
+                      "text-sm font-black font-mono flex items-center gap-1 tracking-tighter",
+                      res.latency! < 100 ? 'text-emerald-400' : res.latency! < 250 ? 'text-amber-400' : 'text-orange-500'
+                    )}>
+                      {res.latency} <span className="text-[9px] opacity-40 font-bold uppercase tracking-widest ml-1">ms</span>
                     </span>
                   )}
                 </div>
