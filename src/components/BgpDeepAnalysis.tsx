@@ -137,7 +137,7 @@ export default function BgpDeepAnalysis({ asn, asnOrg, ip }: BgpAnalysisProps) {
       nature: `${asnOrg || "该运营商"} 是该地区的网络服务提供商。其业务涵盖了基础网络接入及路由宣告服务。`,
       conclusion: "根据 ASN 特征分析，该 IP 表现出稳定的网络接入特征。",
       type: "原生 IP (Native)",
-      route: `该网段目前由 ${asn || "当前自治系统"} 宣告，路由路径表现正常，暂未监测到异常的 BGP 路由摆动。`
+      route: `IP 地址 ${ip || "该地址"} 目前由 ${asn || "当前自治系统"} 宣告，路由路径表现正常，暂未监测到异常的 BGP 路由摆动。`
     };
   };
 

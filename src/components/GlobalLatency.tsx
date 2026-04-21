@@ -8,60 +8,93 @@ interface Node {
   id: string;
   name: string;
   region: string;
-  endpoint: string;
+  endpoints: string[]; // 改为数组，支持备用地址
   latency: number | null;
   status: 'idle' | 'testing' | 'done' | 'error';
 }
 
 const GLOBAL_NODES: Node[] = [
-  { id: 'la', name: "Los Angeles", region: "North America", endpoint: "https://us-west1-gce.cloudping.info/ping", latency: null, status: 'idle' },
-  { id: 'hk', name: "Hong Kong", region: "Asia Pacific", endpoint: "https://ap-east1-gce.cloudping.info/ping", latency: null, status: 'idle' },
-  { id: 'tk', name: "Tokyo", region: "Asia", endpoint: "https://ap-northeast1-gce.cloudping.info/ping", latency: null, status: 'idle' },
-  { id: 'ld', name: "London", region: "Europe", endpoint: "https://europe-west2-gce.cloudping.info/ping", latency: null, status: 'idle' },
-  { id: 'sg', name: "Singapore", region: "South East Asia", endpoint: "https://ap-southeast1-gce.cloudping.info/ping", latency: null, status: 'idle' },
-  { id: 'fk', name: "Frankfurt", region: "Europe", endpoint: "https://europe-west3-gce.cloudping.info/ping", latency: null, status: 'idle' },
+  { 
+    id: 'la', name: "Los Angeles", region: "North America", 
+    endpoints: ["https://speed.cloudflare.com/favicon.ico", "https://www.google.com/favicon.ico"], 
+    latency: null, status: 'idle' 
+  },
+  { 
+    id: 'hk', name: "Hong Kong", region: "Asia Pacific", 
+    endpoints: ["https://www.google.com.hk/favicon.ico", "https://pccw.com/favicon.ico"], 
+    latency: null, status: 'idle' 
+  },
+  { 
+    id: 'tk', name: "Tokyo", region: "Asia", 
+    endpoints: ["https://www.google.co.jp/favicon.ico", "https://www.yahoo.co.jp/favicon.ico"], 
+    latency: null, status: 'idle' 
+  },
+  { 
+    id: 'ld', name: "London", region: "Europe", 
+    endpoints: ["https://www.google.co.uk/favicon.ico", "https://www.bbc.co.uk/favicon.ico"], 
+    latency: null, status: 'idle' 
+  },
+  { 
+    id: 'sg', name: "Singapore", region: "South East Asia", 
+    endpoints: ["https://www.google.com.sg/favicon.ico", "https://www.singtel.com/favicon.ico"], 
+    latency: null, status: 'idle' 
+  },
+  { 
+    id: 'fk', name: "Frankfurt", region: "Europe", 
+    endpoints: ["https://www.google.de/favicon.ico", "https://www.telekom.com/favicon.ico"], 
+    latency: null, status: 'idle' 
+  },
 ];
 
 export default function GlobalLatency() {
   const [nodes, setNodes] = useState<Node[]>(GLOBAL_NODES);
   const [isTesting, setIsTesting] = useState(false);
 
-  const testNode = async (node: Node) => {
+  const pingEndpoint = async (url: string): Promise<number> => {
     const start = performance.now();
-    try {
-      // 使用 fetch 进行真实的 HTTP 延迟探测
-      // 附加随机参数防止缓存
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      await fetch(`${node.endpoint}?t=${Date.now()}`, {
+    try {
+      await fetch(`${url}?cache_bust=${Date.now()}`, {
         mode: 'no-cors',
         cache: 'no-store',
         signal: controller.signal
       });
-
       clearTimeout(timeoutId);
-      const latency = Math.round(performance.now() - start);
-      
-      setNodes(prev => prev.map(n => 
-        n.id === node.id ? { ...n, latency, status: 'done' } : n
-      ));
-    } catch (err) {
-      setNodes(prev => prev.map(n => 
-        n.id === node.id ? { ...n, status: 'error' } : n
-      ));
+      return Math.round(performance.now() - start);
+    } catch (e) {
+      clearTimeout(timeoutId);
+      throw e;
     }
+  };
+
+  const testNode = async (node: Node) => {
+    // 尝试多个备用地址，直到一个成功
+    for (const url of node.endpoints) {
+      try {
+        const latency = await pingEndpoint(url);
+        setNodes(prev => prev.map(n => 
+          n.id === node.id ? { ...n, latency, status: 'done' } : n
+        ));
+        return; // 成功后跳出
+      } catch (err) {
+        console.warn(`Ping failed for ${node.name} using ${url}`);
+      }
+    }
+    
+    // 如果所有地址都失败
+    setNodes(prev => prev.map(n => 
+      n.id === node.id ? { ...n, status: 'error' } : n
+    ));
   };
 
   const startTest = useCallback(async () => {
     setIsTesting(true);
-    // 重置所有节点状态
     setNodes(GLOBAL_NODES.map(n => ({ ...n, status: 'testing' })));
 
-    // 逐个或并发执行探测（模拟真实扫描感）
     const promises = GLOBAL_NODES.map(async (node, index) => {
-      // 稍微错开启动时间，视觉效果更好
-      await new Promise(r => setTimeout(r, index * 150));
+      await new Promise(r => setTimeout(r, index * 200));
       return testNode(node);
     });
 
@@ -71,7 +104,6 @@ export default function GlobalLatency() {
 
   return (
     <div className="p-6 md:p-8 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md relative overflow-hidden">
-      {/* 装饰性扫描线 */}
       {isTesting && (
         <motion.div 
           initial={{ top: "-10%" }}
@@ -89,7 +121,7 @@ export default function GlobalLatency() {
           <div>
             <h2 className="text-xl font-bold">全球节点延迟探测</h2>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" /> 实时 HTTP 响应测试 (ICMP-Like)
+              <Clock className="h-3 w-3" /> 智能备用链路测试 (HTTP-Check)
             </p>
           </div>
         </div>
@@ -99,7 +131,7 @@ export default function GlobalLatency() {
           className="px-5 py-2.5 bg-primary/20 hover:bg-primary/30 text-primary text-xs font-bold rounded-xl border border-primary/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
         >
           {isTesting ? <Zap className="h-4 w-4 animate-pulse" /> : <BarChart3 className="h-4 w-4 group-hover:scale-110 transition-transform" />}
-          {isTesting ? "正在诊断..." : "执行全网扫描"}
+          {isTesting ? "扫描中..." : "全网深度探测"}
         </button>
       </div>
 
@@ -130,7 +162,7 @@ export default function GlobalLatency() {
                 {node.status === 'testing' ? (
                   <div className="flex flex-col items-end gap-1">
                     <div className="h-4 w-12 bg-primary/20 rounded animate-pulse" />
-                    <span className="text-[8px] text-primary/60 font-mono animate-pulse">PINGING...</span>
+                    <span className="text-[8px] text-primary/60 font-mono animate-pulse uppercase">Pinging</span>
                   </div>
                 ) : node.status === 'done' ? (
                   <div className="flex flex-col items-end">
@@ -138,19 +170,18 @@ export default function GlobalLatency() {
                       node.latency! < 100 ? 'text-green-500' : 
                       node.latency! < 250 ? 'text-yellow-500' : 'text-red-500'
                     }`}>
-                      {node.latency} <span className="text-[10px] opacity-50">ms</span>
+                      {node.latency} <span className="text-[10px] opacity-50 font-sans">ms</span>
                     </span>
-                    <span className="text-[8px] text-muted-foreground mt-1 uppercase">Latency</span>
+                    <span className="text-[8px] text-muted-foreground mt-1 uppercase">Response</span>
                   </div>
                 ) : node.status === 'error' ? (
                   <span className="text-xs font-bold text-red-500 uppercase">Timeout</span>
                 ) : (
-                  <span className="text-[10px] text-muted-foreground font-mono">WAITING</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">READY</span>
                 )}
               </div>
             </div>
             
-            {/* 进度条装饰 */}
             {node.status === 'testing' && (
               <div className="mt-3 w-full h-[1px] bg-white/5 overflow-hidden">
                 <motion.div 

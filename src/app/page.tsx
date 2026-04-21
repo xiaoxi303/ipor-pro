@@ -22,6 +22,9 @@ import GlobalLatency from "@/components/GlobalLatency";
 import AdvancedIpDetails from "@/components/AdvancedIpDetails";
 import SecurityInsights from "@/components/SecurityInsights";
 import SystemFingerprint from "@/components/SystemFingerprint";
+import IpPersona from "@/components/IpPersona";
+import NetworkIntelligence from "@/components/NetworkIntelligence";
+import ThreatIntelligence from "@/components/ThreatIntelligence";
 import { 
   Globe, 
   Network, 
@@ -46,6 +49,17 @@ export default function Home() {
       const url = targetIp ? `/api/ip?ip=${targetIp}` : '/api/ip';
       const res = await fetch(url);
       const json = await res.json();
+      
+      // 核心修复：如果检测到是本地回环或占位 IP，尝试通过第三方 Echo 服务发现真实外网 IP
+      if (!targetIp && (json.ip === '127.0.0.1' || json.ip === '::1' || json.source === 'safety-placeholder' || json.country_code === 'XX')) {
+        console.log("Detecting local environment, discovering public IP...");
+        const echoRes = await fetch('https://api.ipify.org?format=json');
+        const echoData = await echoRes.json();
+        if (echoData.ip) {
+          return fetchData(echoData.ip); // 用发现的真实 IP 递归调用
+        }
+      }
+
       if (json.error) throw new Error(json.error);
       setData(json);
       
@@ -119,68 +133,86 @@ export default function Home() {
           onSearch={handleSearch}
         />
 
-        <div key={data?.ip} className="space-y-12">
-          {/* Main Analysis Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Left: Identity & Infrastructure */}
-            <div className="lg:col-span-8 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <InfoCard title="地理位置信息" icon={Globe}>
-                  <InfoItem label="国家/地区" value={data?.country_name} subValue={data?.country_code} />
-                  <InfoItem label="省份/州" value={data?.region} />
-                  <InfoItem label="城市" value={data?.city} />
-                  <InfoItem label="时区" value={data?.timezone} />
-                  <InfoItem label="当地货币" value={data?.currency || "未知"} />
-                </InfoCard>
+        <div key={data?.ip} className="flex flex-col lg:flex-row gap-8 items-start">
+          {/* Main Content Column (Left - 2/3 width) */}
+          <div className="w-full lg:w-2/3 flex flex-col gap-8">
+            {/* Identity Group */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <InfoCard title="地理位置信息" icon={Globe}>
+                <InfoItem label="国家/地区" value={data?.country_name} subValue={data?.country_code} />
+                <InfoItem label="省份/州" value={data?.region_name || data?.region} />
+                <InfoItem label="城市" value={data?.city_name || data?.city} />
+                <InfoItem label="时区" value={data?.timezone} />
+                <InfoItem label="当地货币" value={data?.currency || "未知"} />
+              </InfoCard>
 
-                <InfoCard title="网络服务商信息" icon={Network}>
-                  <InfoItem label="运营商 (ISP)" value={data?.isp || data?.asn_org} highlight />
-                  <InfoItem label="自治系统 (ASN)" value={data?.asn ? (String(data.asn).toUpperCase().startsWith('AS') ? data.asn : `AS${data.asn}`) : undefined} />
-                  <WebRTCDetector />
-                  <InfoItem label="组织机构" value={data?.asn_org} />
-                  <InfoItem label="网络类型" value={data?.org || "未知"} />
-                </InfoCard>
-              </div>
-
-              <Map latitude={data?.latitude || 0} longitude={data?.longitude || 0} />
-              
-              <BgpDeepAnalysis 
-                asn={data?.asn} 
-                asnOrg={data?.asn_org} 
-                ip={data?.ip} 
-              />
-
-              <GlobalLatency />
-              
-              <AdvancedIpDetails data={data} />
+              <InfoCard title="网络服务商信息" icon={Network}>
+                <InfoItem label="运营商 (ISP)" value={data?.isp || data?.asn_org} highlight />
+                <InfoItem label="自治系统 (ASN)" value={data?.asn ? (String(data.asn).toUpperCase().startsWith('AS') ? data.asn : `AS${data.asn}`) : undefined} />
+                <WebRTCDetector />
+                <InfoItem label="组织机构" value={data?.asn_org} />
+                <InfoItem label="网络类型" value={data?.org || "未知"} />
+              </InfoCard>
             </div>
 
-            {/* Right: Security & Reputation Dashboard */}
-            <div className="lg:col-span-4 space-y-8">
-              <ReputationAssessment riskScore={data?.riskScore} />
-              
-              <SecurityInsights 
-                riskScore={data?.riskScore} 
-                isProxy={data?.is_proxy} 
-                isp={data?.isp} 
-              />
-
-              <IpDatabaseVerification 
-                riskScore={data?.riskScore} 
-                isProxy={data?.is_proxy} 
-                isp={data?.isp} 
-                ip={data?.ip}
-              />
-              
+            {/* Map & Advanced Features */}
+            <Map latitude={data?.latitude || 0} longitude={data?.longitude || 0} />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <AdvancedIpDetails data={data} />
               <SystemFingerprint />
             </div>
+
+            <BgpDeepAnalysis 
+              asn={data?.asn || data?.as?.split(' ')[0]} 
+              asnOrg={data?.asn_org || data?.as} 
+              ip={data?.ip} 
+            />
+
+            <GlobalLatency />
+
+            <IpDatabaseVerification 
+              riskScore={data?.riskScore} 
+              isProxy={data?.is_proxy} 
+              isp={data?.isp} 
+              ip={data?.ip}
+            />
           </div>
 
-          {/* Bottom Tools Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Sidebar Column (Right - 1/3 width) */}
+          <div className="w-full lg:w-1/3 flex flex-col gap-8">
+            <ReputationAssessment riskScore={data?.riskScore} />
+            
+            <IpPersona 
+              usageType={data?.usage_type} 
+              persona={data?.persona} 
+              riskScore={data?.riskScore} 
+            />
+
+            <NetworkIntelligence 
+              bgpPath={data?.bgp_path || []} 
+            />
+
+            <SecurityInsights 
+              riskScore={data?.riskScore} 
+              isProxy={data?.is_proxy} 
+              isp={data?.isp} 
+            />
+
+            <ThreatIntelligence 
+              attackLogs={data?.attack_logs || []} 
+            />
+          </div>
+        </div>
+
+        {/* Bottom Tools Section (Full Width, outside the flex container to ensure proper flow) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+          <div className="h-full">
             <InfoCard title="网络连通性测试" icon={Zap}>
               <ConnectivityChecker />
             </InfoCard>
+          </div>
+          <div className="h-full">
             <ServiceStatus riskScore={data?.riskScore} countryCode={data?.country_code} ip={data?.ip} />
           </div>
         </div>
