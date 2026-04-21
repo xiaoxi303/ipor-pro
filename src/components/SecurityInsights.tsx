@@ -63,7 +63,7 @@ export default function SecurityInsights({ riskScore, isProxy, isp }: SecurityIn
         </div>
         <div>
           <h2 className="text-xl font-black tracking-tight text-gradient">深度安全建议</h2>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Professional Security Insights</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">专业安全情报分析</p>
         </div>
       </div>
 

@@ -71,19 +71,19 @@ export default function IpDatabaseVerification({ riskScore, isProxy, isp, ip, us
 
       <div className="grid grid-cols-1 gap-3 mb-10 relative z-10">
         <DatabaseCard 
-          title="Standard DB (Location)" 
+          title="标准库 (位置信息)" 
           status={status.standard} 
-          value="Matched & Verified" 
+          value="已匹配并核实" 
         />
         <DatabaseCard 
-          title="Proxy DB (Intelligence)" 
+          title="代理库 (情报分析)" 
           status={status.proxy} 
-          value={displayUsage} 
+          value={displayUsage === "Residential" ? "住宅/宽带" : displayUsage === "Data Center" ? "数据中心" : displayUsage} 
         />
         <DatabaseCard 
-          title="Threat DB (Reputation)" 
+          title="威胁库 (信誉评级)" 
           status={status.threat} 
-          value={riskScore > 50 ? "High Risk Detected" : "Clear Reputation"} 
+          value={riskScore > 50 ? "检测到高风险" : "信誉记录纯净"} 
         />
       </div>
 
@@ -99,7 +99,7 @@ export default function IpDatabaseVerification({ riskScore, isProxy, isp, ip, us
             >
                <Loader2 className="h-8 w-8 text-indigo-400 animate-spin mb-4" />
                <p className="text-[11px] font-bold text-muted-foreground animate-pulse text-center max-w-xs uppercase tracking-widest opacity-60">
-                 Cross-checking IP2Location Specialized Databases...
+                 正在跨库校验 IP2Location 专业数据库...
                </p>
             </motion.div>
           ) : (
@@ -125,7 +125,7 @@ export default function IpDatabaseVerification({ riskScore, isProxy, isp, ip, us
                 <div className="text-lg font-black text-indigo-400 tracking-widest uppercase">
                   判定结果: {typeCN}
                 </div>
-                <p className="text-[9px] font-bold text-muted-foreground mt-2 opacity-40 uppercase tracking-[0.2em]">Source: IP2Location.io Professional API</p>
+                <p className="text-[9px] font-bold text-muted-foreground mt-2 opacity-40 uppercase tracking-[0.2em]">来源: IP2Location.io 官方接口</p>
               </div>
             </motion.div>
           )}
@@ -152,7 +152,7 @@ function DatabaseCard({ title, status, value }: { title: string; status: string;
         status === 'checking' ? 'text-indigo-300 animate-pulse' : 
         'text-muted-foreground'
       }`}>
-        {status === 'done' ? value : status === 'checking' ? 'Querying API...' : 'Pending'}
+        {status === 'done' ? value : status === 'checking' ? '查询中...' : '等待中'}
       </p>
     </div>
   );

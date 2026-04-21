@@ -32,9 +32,9 @@ export default function ReputationAssessment({ riskScore, threat }: ReputationPr
   }, [riskScore]);
 
   const getRiskLevel = (score: number) => {
-    if (score < 20) return { label: "SAFE", color: "text-emerald-400", stroke: "#10b981" };
-    if (score < 60) return { label: "MEDIUM", color: "text-amber-400", stroke: "#f59e0b" };
-    return { label: "HIGH RISK", color: "text-rose-500", stroke: "#f43f5e" };
+    if (score < 20) return { label: "低风险", color: "text-emerald-400", stroke: "#10b981" };
+    if (score < 60) return { label: "中等风险", color: "text-amber-400", stroke: "#f59e0b" };
+    return { label: "高风险", color: "text-rose-500", stroke: "#f43f5e" };
   };
 
   const risk = getRiskLevel(isScanning ? 0 : displayScore);
@@ -59,7 +59,7 @@ export default function ReputationAssessment({ riskScore, threat }: ReputationPr
             className="absolute inset-0 z-20 bg-[#030303]/60 backdrop-blur-md flex flex-col items-center justify-center"
           >
             <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">Running Reputation Scan</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">正在运行信誉扫描</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -70,7 +70,7 @@ export default function ReputationAssessment({ riskScore, threat }: ReputationPr
         </div>
         <div>
           <h2 className="text-xl font-black tracking-tight text-gradient">实时信誉评估</h2>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">IP2Location Threat Analysis</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">IP2Location 威胁分析</p>
         </div>
       </div>
 
@@ -115,20 +115,20 @@ export default function ReputationAssessment({ riskScore, threat }: ReputationPr
         <div className="text-center mt-6">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 block mb-2">综合欺诈分</span>
           <p className={cn("text-xl font-black tracking-widest transition-colors duration-500 uppercase", risk.color)}>
-            {isScanning ? "SCANNING..." : risk.label}
+            {isScanning ? "扫描中..." : risk.label}
           </p>
         </div>
       </div>
 
       <div className="space-y-8">
         <div>
-          <h3 className="text-[10px] font-black text-muted-foreground/60 mb-4 uppercase tracking-[0.2em]">威胁标签 (Real-time Flags)</h3>
+          <h3 className="text-[10px] font-black text-muted-foreground/60 mb-4 uppercase tracking-[0.2em]">威胁标签 (实时检测)</h3>
           <div className="grid grid-cols-1 gap-2">
-            <ThreatBadge name="VPN Detector" active={threat?.is_vpn} scanning={isScanning} />
-            <ThreatBadge name="TOR Exit Node" active={threat?.is_tor} scanning={isScanning} />
-            <ThreatBadge name="Spam Source" active={threat?.is_spam} scanning={isScanning} />
-            <ThreatBadge name="Public Proxy" active={threat?.is_public_proxy} scanning={isScanning} />
-            <ThreatBadge name="Data Center" active={threat?.is_data_center} scanning={isScanning} />
+            <ThreatBadge name="VPN 检测器" active={threat?.is_vpn} scanning={isScanning} />
+            <ThreatBadge name="TOR 出口节点" active={threat?.is_tor} scanning={isScanning} />
+            <ThreatBadge name="垃圾邮件源" active={threat?.is_spam} scanning={isScanning} />
+            <ThreatBadge name="公共代理" active={threat?.is_public_proxy} scanning={isScanning} />
+            <ThreatBadge name="数据中心" active={threat?.is_data_center} scanning={isScanning} />
           </div>
         </div>
 
@@ -163,7 +163,7 @@ function ThreatBadge({ name, active, scanning }: { name: string; active?: boolea
     )}>
       <span className="text-[10px] font-black uppercase tracking-widest">{name}</span>
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-bold">{scanning ? "Checking" : active ? "DETECTED" : "CLEAN"}</span>
+        <span className="text-[10px] font-bold">{scanning ? "检测中" : active ? "已发现" : "正常"}</span>
         {!scanning && (active ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />)}
       </div>
     </div>

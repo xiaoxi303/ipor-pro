@@ -28,8 +28,17 @@ export async function GET(request: NextRequest) {
       ? `https://api.ip2location.io?key=${apiKey}&format=json`
       : `https://api.ip2location.io?ip=${ipToLookup}&key=${apiKey}&format=json`;
 
-    const response = await fetch(url);
+    // Fetch IPPure data in parallel if it's the client IP or local
+    // Note: IPPure API usually returns current IP info
+    const ippureUrl = `https://my.ippure.com/v1/info`;
+    
+    const [response, ippureResponse] = await Promise.all([
+      fetch(url),
+      fetch(ippureUrl).catch(() => null)
+    ]);
+
     const data = await response.json();
+    const ippureData = ippureResponse ? await ippureResponse.json().catch(() => null) : null;
 
     if (data.error) {
       throw new Error(data.error.error_message || 'API Error');
@@ -47,20 +56,34 @@ export async function GET(request: NextRequest) {
     if (data.is_web_proxy) riskScore += 25;
     if (data.is_spam) riskScore += 30;
     
+    // Integration with IPPure Fraud Score if available and matching IP
+    let fraudScore = ippureData?.fraudScore || 0;
+    // If we're looking up a specific IP that isn't the client, 
+    // we use a calculated fraud score from IP2Location
+    if (queryIp && queryIp !== clientIp && queryIp !== ippureData?.ip) {
+      fraudScore = riskScore; // Fallback
+    } else if (ippureData) {
+      // Use actual fraud score from IPPure for client IP
+      riskScore = Math.max(riskScore, ippureData.fraudScore);
+    }
+    
+    // Purity Coefficient (100 - fraudScore)
+    const purityScore = Math.max(0, 100 - (fraudScore || riskScore));
+
     // Caps risk score at 100
     riskScore = Math.min(riskScore, 100);
     
     // If no major threats, use usage_type for baseline
     if (riskScore === 0) {
-      if (data.is_residential) riskScore = 5;
+      if (data.is_residential || ippureData?.isResidential) riskScore = 5;
       else if (data.usage_type === 'EDU') riskScore = 10;
       else if (data.usage_type === 'GOV') riskScore = 8;
       else riskScore = 15;
     }
 
     // ASN extraction
-    let displayAsn = data.asn || "";
-    let displayOrg = data.as || data.asn || "Unknown";
+    let displayAsn = data.asn || ippureData?.asn || "";
+    let displayOrg = data.as || data.asn || ippureData?.asOrganization || "Unknown";
     if (displayOrg.startsWith('AS')) {
       const parts = displayOrg.split(' ');
       displayAsn = parts[0];
@@ -70,19 +93,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       // Core Geolocation
       ip: data.ip,
-      country_name: data.country_name,
-      country_code: data.country_code,
-      region: data.region_name,
-      city: data.city_name,
-      zip: data.zip_code,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      timezone: data.time_zone,
+      country_name: data.country_name || ippureData?.country,
+      country_code: data.country_code || ippureData?.countryCode,
+      region: data.region_name || ippureData?.region,
+      city: data.city_name || ippureData?.city,
+      zip: data.zip_code || ippureData?.postalCode,
+      latitude: data.latitude || ippureData?.latitude,
+      longitude: data.longitude || ippureData?.longitude,
+      timezone: data.time_zone || ippureData?.timezone,
       
       // Network & Infrastructure
       asn: displayAsn,
       asn_org: displayOrg,
-      isp: data.isp || displayOrg,
+      isp: data.isp || ippureData?.asOrganization || displayOrg,
       org: data.usage_type || (isProxy ? "Data Center" : "ISP"),
       domain: data.domain || "Unknown",
       net_speed: data.net_speed || "Unknown",
@@ -104,14 +127,17 @@ export async function GET(request: NextRequest) {
       
       // Security & Risk
       riskScore: riskScore,
+      fraudScore: fraudScore,
+      purityScore: purityScore,
       is_proxy: isProxy,
+      is_residential: data.is_residential || ippureData?.isResidential || false,
       threat: {
         is_vpn: data.is_vpn || false,
         is_tor: data.is_tor || false,
         is_data_center: data.is_data_center || false,
         is_public_proxy: data.is_public_proxy || false,
         is_web_proxy: data.is_web_proxy || false,
-        is_residential: data.is_residential || false,
+        is_residential: data.is_residential || ippureData?.isResidential || false,
         is_spam: data.is_spam || false,
         is_bot: data.is_bot || false,
         is_scanner: data.is_scanner || false
@@ -122,7 +148,7 @@ export async function GET(request: NextRequest) {
       currency_symbol: data.time_zone_info?.currency?.symbol || "",
       
       timestamp: new Date().toISOString(),
-      source: "ip2location.io (Official API)"
+      source: "IP2Location + IPPure Intelligence"
     });
 
   } catch (error: any) {
