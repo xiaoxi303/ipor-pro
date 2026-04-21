@@ -19,7 +19,9 @@ import BgpDeepAnalysis from "@/components/BgpDeepAnalysis";
 import ReputationAssessment from "@/components/ReputationAssessment";
 import IpDatabaseVerification from "@/components/IpDatabaseVerification";
 import GlobalLatency from "@/components/GlobalLatency";
+import AdvancedIpDetails from "@/components/AdvancedIpDetails";
 import SecurityInsights from "@/components/SecurityInsights";
+import SystemFingerprint from "@/components/SystemFingerprint";
 import { 
   Globe, 
   Network, 
@@ -133,7 +135,7 @@ export default function Home() {
 
                 <InfoCard title="网络服务商信息" icon={Network}>
                   <InfoItem label="运营商 (ISP)" value={data?.isp || data?.asn_org} highlight />
-                  <InfoItem label="自治系统 (ASN)" value={data?.asn} />
+                  <InfoItem label="自治系统 (ASN)" value={data?.asn ? (String(data.asn).toUpperCase().startsWith('AS') ? data.asn : `AS${data.asn}`) : undefined} />
                   <WebRTCDetector />
                   <InfoItem label="组织机构" value={data?.asn_org} />
                   <InfoItem label="网络类型" value={data?.org || "未知"} />
@@ -149,6 +151,8 @@ export default function Home() {
               />
 
               <GlobalLatency />
+              
+              <AdvancedIpDetails data={data} />
             </div>
 
             {/* Right: Security & Reputation Dashboard */}
@@ -165,13 +169,10 @@ export default function Home() {
                 riskScore={data?.riskScore} 
                 isProxy={data?.is_proxy} 
                 isp={data?.isp} 
+                ip={data?.ip}
               />
               
-              <InfoCard title="系统指纹" icon={Cpu}>
-                <InfoItem label="浏览器" value="Chrome" />
-                <InfoItem label="操作系统" value="Windows" />
-                <InfoItem label="系统语言" value="简体中文" />
-              </InfoCard>
+              <SystemFingerprint />
             </div>
           </div>
 
@@ -180,7 +181,7 @@ export default function Home() {
             <InfoCard title="网络连通性测试" icon={Zap}>
               <ConnectivityChecker />
             </InfoCard>
-            <ServiceStatus riskScore={data?.riskScore} countryCode={data?.country_code} />
+            <ServiceStatus riskScore={data?.riskScore} countryCode={data?.country_code} ip={data?.ip} />
           </div>
         </div>
       </main>
